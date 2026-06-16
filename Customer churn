@@ -1,0 +1,86 @@
+import os
+os.listdir('download/input')
+os.listdir('/download/input/customer-churn')
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+train = pd.read_csv('/download/input/customer-churn/train.csv')
+test = pd.read_csv('/download/input/customer-churn/test.csv')
+
+print("Train shape:", train.shape)
+print("Test shape:", test.shape)
+
+print(train.info())
+train.describe()
+train.head()
+sns.countplot(x="Churn", data=train)
+plt.show()
+
+train["Churn"].value_counts(normalize=True)
+cat_cols = train.select_dtypes(include=['object']).columns
+num_cols = train.select_dtypes(exclude=['object']).columns
+
+print("Categorical:", cat_cols)
+print("Numerical:", num_cols)
+from sklearn.preprocessing import LabelEncoder
+
+for col in cat_cols:
+    if col != "Churn":
+        le = LabelEncoder()
+        combined = list(train[col]) + list(test[col])
+        le.fit(combined)
+        train[col] = le.transform(train[col])
+        test[col] = le.transform(test[col])
+        train.head()
+       train.columns
+       train.info()
+       print(train.columns)
+      train.head()
+     train.describe()
+     train['Churn'].value_counts()
+     train['Churn'].value_counts(normalize=True)
+     if 'id' in train.columns:
+    train = train.drop(columns=['id'])
+# 1. Save the IDs for later (only if they exist in the dataframe)
+if 'id' in test.columns:
+    test_ids = test['id']
+    # 2. Drop 'id' from test so it matches training features
+    test = test.drop(columns=['id'])
+    print("Successfully extracted IDs and dropped column.")
+else:
+    print("Column 'id' was already removed or doesn't exist.")
+
+# Display the first few rows to confirm it looks right
+test.head()
+# Separate the target first so it doesn't get encoded
+y = train['Churn'].map({'Yes': 1, 'No': 0})
+X = train.drop(columns=['Churn'])
+
+# Convert text columns into numbers (One-Hot Encoding)
+X = pd.get_dummies(X)
+test_final = pd.get_dummies(test)
+
+
+X, test_final = X.align(test_final, join='left', axis=1, fill_value=0)
+from sklearn.ensemble import RandomForestClassifier
+
+# Initialize the model
+model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
+
+# Train the model
+model.fit(X, y)
+print("Model training complete!")
+# Predict probabilities (usually better for Kaggle scores than hard 0/1)
+predictions = model.predict_proba(test_final)[:, 1]
+
+# Create the final dataframe
+submission = pd.DataFrame({
+    "id": test_ids,
+    "Churn": predictions
+})
+
+# Save to CSV
+submission.to_csv('submission.csv', index=False)
+print("Submission file saved as submission.csv!")
